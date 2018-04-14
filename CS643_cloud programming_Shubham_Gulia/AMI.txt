@@ -1,0 +1,155 @@
+//updating amazon linux
+sudo yum update
+
+//installing java
+sudo yum install java-1.8.0-openjdk-devel
+sudo alternatives --config java
+
+//ssh connection  
+ssh-keygen -t rsa -P ""
+cat /home/ec2-user/.ssh/id_rsa.pub >> /home/ec2-user/.ssh/authorized_keys
+
+//downloading hadoop
+sudo wget http://mirror.metrocast.net/apache/hadoop/common/stable/hadoop-2.9.0.tar.gz
+
+//extracting hadoop 
+sudo tar -xzvf hadoop-2.9.0.tar.gz 
+sudo mv hadoop-2.9.0 /usr/local/hadoop 
+sudo chown ec2-user -R /usr/local/hadoop
+
+// configuring for single node first 
+sudo mkdir -p /usr/local/hadoop_tmp/hdfs/namenode
+sudo mkdir -p /usr/local/hadoop_tmp/hdfs/datanode
+sudo chown ec2-user -R /usr/local/hadoop_tmp/
+
+//update $HOME/.bashrc
+
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.161-0.b14.36.amzn1.x86_64
+export HADOOP_HOME=/usr/local/hadoop
+export PATH=$PATH:$HADOOP_HOME/bin
+export PATH=$PATH:$HADOOP_HOME/sbin
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export YARN_HOME=$HADOOP_HOME
+export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+export HADOOP_OPTS="-Djava.library.path=$HADOOP_HOME/lib"
+
+// for single node 
+
+// hadoop-env.sh
+JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.161-0.b14.36.amzn1.x86_64
+
+//core-site.xml
+<property>
+<name>fs.default.name</name>
+<value>hdfs://HadoopMaster:9000</value>
+</property>
+
+//hdfs-site.xml
+<property>
+      <name>dfs.replication</name>
+      <value>1</value>
+ </property>
+ <property>
+      <name>dfs.namenode.name.dir</name>
+      <value>file:/usr/local/hadoop_tmp/hdfs/namenode</value>
+ </property>
+ <property>
+      <name>dfs.datanode.data.dir</name>
+      <value>file:/usr/local/hadoop_tmp/hdfs/datanode</value>
+ </property>
+
+
+//yarn-site.xml
+
+<property>
+      <name>yarn.nodemanager.aux-services</name>
+      <value>mapreduce_shuffle</value>
+</property>
+<property>
+      <name>yarn.nodemanager.aux-services.mapreduce.shuffle.class</name>
+      <value>org.apache.hadoop.mapred.ShuffleHandler</value>
+</property>
+
+
+//mapred-site.xml
+cp /usr/local/hadoop/etc/hadoop/mapred-site.xml.template  /usr/local/hadoop/etc/hadoop/mapred-site.xml
+
+<property>
+      <name>mapreduce.framework.name</name>
+      <value>yarn</value>
+</property>
+
+
+
+// changed config files for multi node
+
+
+# Edit the /etc/hosts file with following command
+172.31.84.120 HadoopMaster
+
+172.31.93.113 HadoopSlave1
+
+172.31.87.0 HadoopSlave2
+
+172.31.94.184 HadoopSlave3
+
+//FOR ALL NODES
+//update core-site.xml
+<property>
+  <name>fs.default.name</name>
+  <value>hdfs://HadoopMaster:9000</value>
+</property>
+
+//update hdfs-site.xml
+<property>
+  <name>dfs.replication</name>
+  <value>3</value>
+</property>
+
+//update yarn-site.xml
+<property>
+	<name>yarn.resourcemanager.resource-tracker.address</name>
+	<value>HadoopMaster:8025</value>
+</property>
+<property>
+	<name>yarn.resourcemanager.scheduler.address</name>
+	<value>HadoopMaster:8035</value>
+</property>
+<property>
+	<name>yarn.resourcemanager.address</name>
+	<value>HadoopMaster:8050</value>
+</property>
+
+
+//update mapred-site.xml
+
+<property>
+	<name>mapreduce.job.tracker</name>
+	<value>HadoopMaster:5431</value>
+</property>
+<property>
+	<name>mapred.framework.name</name>
+	<value>yarn</value>
+</property>
+
+
+//Update masters
+HadoopMaster
+//Update slave
+HadoopSlave1
+HadoopSlave2
+HadoopSlave3
+
+// only for master node
+sudo mkdir -p /usr/local/hadoop_tmp/hdfs/namenode
+
+//only for data node
+sudo mkdir -p /usr/local/hadoop_tmp/hdfs/datanode
+// dont forget to give permission
+hdfs namenode -format
+start-dfs.sh
+start-yarn.sh
+//run jps on both node data and name 
+jps
